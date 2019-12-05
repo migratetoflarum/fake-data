@@ -5,6 +5,7 @@ namespace MigrateToFlarum\FakeData\Controllers;
 use Carbon\Carbon;
 use Faker\Factory;
 use Flarum\Discussion\Discussion;
+use Flarum\Foundation\ValidationException;
 use Flarum\Post\CommentPost;
 use Flarum\User\AssertPermissionTrait;
 use Flarum\User\User;
@@ -13,6 +14,7 @@ use MigrateToFlarum\FakeData\Validators\FakeDataParametersValidator;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Symfony\Component\Translation\TranslatorInterface;
 use Zend\Diactoros\Response\EmptyResponse;
 
 class FakeDataController implements RequestHandlerInterface
@@ -32,13 +34,17 @@ class FakeDataController implements RequestHandlerInterface
 
         $attributes = $request->getParsedBody();
 
-        $userCount = Arr::get($attributes, 'user_count');
-        $discussionCount = Arr::get($attributes, 'discussion_count');
-        $postCount = Arr::get($attributes, 'post_count');
+        $userCount = Arr::get($attributes, 'user_count', 0);
+        $providedUserIds = Arr::get($attributes, 'user_ids');
+        $discussionCount = Arr::get($attributes, 'discussion_count', 0);
+        $providedDiscussionIds = Arr::get($attributes, 'discussion_ids');
+        $postCount = Arr::get($attributes, 'post_count', 0);
 
         $this->validator->assertValid([
             'user_count' => $userCount,
+            'user_ids' => $providedUserIds,
             'discussion_count' => $discussionCount,
+            'discussion_ids' => $providedDiscussionIds,
             'post_count' => $postCount,
         ]);
 
@@ -57,10 +63,25 @@ class FakeDataController implements RequestHandlerInterface
             $userIds[] = $user->id;
         }
 
-        $userQuery = User::query()->inRandomOrder();
+        // Put logic in an IF so that we only do the count() check if necessary
+        if ($discussionCount > 0 || $postCount > 0) {
+            $userQuery = User::query()->inRandomOrder();
 
-        if ($userCount > 0) {
-            $userQuery->whereIn('id', $userIds);
+            if ($userCount > 0) {
+                $userQuery->whereIn('id', $userIds);
+            }
+
+            if (is_array($providedUserIds)) {
+                $userQuery->whereIn('id', $providedUserIds);
+            }
+
+            if ($userQuery->count() === 0) {
+                throw new ValidationException([
+                    'users' => [
+                        app(TranslatorInterface::class)->trans('migratetoflarum-fake-data.api.no-users-matched'),
+                    ],
+                ]);
+            }
         }
 
         $discussionIds = [];
@@ -79,23 +100,38 @@ class FakeDataController implements RequestHandlerInterface
             $post->save();
         }
 
-        $discussionQuery = Discussion::query()->inRandomOrder();
+        // Put logic in an IF so that we only do the count() check if necessary
+        if ($postCount > 0) {
+            $discussionQuery = Discussion::query()->inRandomOrder();
 
-        if ($discussionCount > 0) {
-            $discussionQuery->whereIn('id', $discussionIds);
-        }
+            if ($discussionCount > 0) {
+                $discussionQuery->whereIn('id', $discussionIds);
+            }
 
-        for ($i = 0; $i < $postCount; $i++) {
-            $author = $userQuery->first();
-            $discussion = $discussionQuery->first();
+            if (is_array($providedDiscussionIds)) {
+                $discussionQuery->whereIn('id', $providedDiscussionIds);
+            }
 
-            $post = CommentPost::reply($discussion->id, implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10))), $author->id, null);
-            $post->save();
+            if ($discussionQuery->count() === 0) {
+                throw new ValidationException([
+                    'discussions' => [
+                        app(TranslatorInterface::class)->trans('migratetoflarum-fake-data.api.no-discussions-matched'),
+                    ],
+                ]);
+            }
 
-            $discussion->refreshLastPost();
-            $discussion->refreshCommentCount();
-            $discussion->refreshParticipantCount();
-            $discussion->save();
+            for ($i = 0; $i < $postCount; $i++) {
+                $author = $userQuery->first();
+                $discussion = $discussionQuery->first();
+
+                $post = CommentPost::reply($discussion->id, implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10))), $author->id, null);
+                $post->save();
+
+                $discussion->refreshLastPost();
+                $discussion->refreshCommentCount();
+                $discussion->refreshParticipantCount();
+                $discussion->save();
+            }
         }
 
         return new EmptyResponse(204);
