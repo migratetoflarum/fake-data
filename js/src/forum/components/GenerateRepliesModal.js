@@ -52,7 +52,7 @@ export default class GenerateRepliesModal extends Modal {
                     children: app.translator.trans(translationPrefix + 'send'),
                     onclick: () => {
                         app.request({
-                            url: '/api/fake-data',
+                            url: app.forum.attribute('apiUrl') + '/fake-data',
                             method: 'POST',
                             data: {
                                 user_count: this.userCount,
