@@ -21,7 +21,7 @@
         "source": "https://github.com/migratetoflarum/fake-data"
     },
     "require": {
-        "flarum/core": "^0.1.0-beta.9",
+        "flarum/core": "^0.1.0-beta.12",
         "fzaninotto/faker": "^1.8"
     },
     "extra": {
