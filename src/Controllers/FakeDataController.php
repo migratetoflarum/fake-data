@@ -9,6 +9,7 @@ use Flarum\Foundation\ValidationException;
 use Flarum\Post\CommentPost;
 use Flarum\User\AssertPermissionTrait;
 use Flarum\User\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use MigrateToFlarum\FakeData\Validators\FakeDataParametersValidator;
 use Psr\Http\Message\ResponseInterface;
@@ -85,16 +86,15 @@ class FakeDataController implements RequestHandlerInterface
         }
 
         $discussionIds = [];
+        $discussionIdsToRefresh = [];
 
         for ($i = 0; $i < $discussionCount; $i++) {
             $author = $userQuery->first();
             $discussion = Discussion::start($faker->sentence($faker->numberBetween(1, 6)), $author);
-            $discussion->refreshLastPost();
-            $discussion->refreshCommentCount();
-            $discussion->refreshParticipantCount();
             $discussion->save();
 
             $discussionIds[] = $discussion->id;
+            $discussionIdsToRefresh[] = $discussion->id;
 
             $post = CommentPost::reply($discussion->id, implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10))), $author->id, null);
             $post->save();
@@ -124,14 +124,26 @@ class FakeDataController implements RequestHandlerInterface
                 $author = $userQuery->first();
                 $discussion = $discussionQuery->first();
 
+                // Add the randomly selected discussions to the list of discussions in need of a meta update
+                // We skip the check if new discussions were created above, because we are certain those are already in the array
+                if ($discussionCount === 0 && !in_array($discussion->id, $discussionIdsToRefresh)) {
+                    $discussionIdsToRefresh[] = $discussion->id;
+                }
+
                 $post = CommentPost::reply($discussion->id, implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10))), $author->id, null);
                 $post->save();
-
-                $discussion->refreshLastPost();
-                $discussion->refreshCommentCount();
-                $discussion->refreshParticipantCount();
-                $discussion->save();
             }
+        }
+
+        if (count($discussionIdsToRefresh)) {
+            Discussion::query()->whereIn('id', $discussionIdsToRefresh)->chunk(100, function (Collection $discussions) {
+                $discussions->each(function (Discussion $discussion) {
+                    $discussion->refreshLastPost();
+                    $discussion->refreshCommentCount();
+                    $discussion->refreshParticipantCount();
+                    $discussion->save();
+                });
+            });
         }
 
         return new EmptyResponse(204);
