@@ -23,10 +23,25 @@ class FakeDataController implements RequestHandlerInterface
     use AssertPermissionTrait;
 
     protected $validator;
+    protected $inBulkMode = false;
+    protected $bulkModeCache = [];
 
     public function __construct(FakeDataParametersValidator $validator)
     {
         $this->validator = $validator;
+    }
+
+    protected function reuseInBulkMode(string $key, callable $callback)
+    {
+        if (!$this->inBulkMode) {
+            return $callback();
+        }
+
+        if (!Arr::exists($this->bulkModeCache, $key)) {
+            $this->bulkModeCache[$key] = $callback();
+        }
+
+        return $this->bulkModeCache[$key];
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -34,6 +49,8 @@ class FakeDataController implements RequestHandlerInterface
         $this->assertAdmin($request->getAttribute('actor'));
 
         $attributes = $request->getParsedBody();
+
+        $this->inBulkMode = (bool)Arr::get($attributes, 'bulk');
 
         $userCount = Arr::get($attributes, 'user_count', 0);
         $providedUserIds = Arr::get($attributes, 'user_ids');
@@ -52,16 +69,24 @@ class FakeDataController implements RequestHandlerInterface
         $faker = Factory::create();
 
         $userIds = [];
+        $bulkUserIncrement = 1;
 
         for ($i = 0; $i < $userCount; $i++) {
             $user = new User();
-            $user->email = $faker->unique()->safeEmail;
-            $user->username = $faker->unique()->userName;
+            $user->email = $this->inBulkMode ? $this->reuseInBulkMode('email-prefix', function () use ($faker) {
+                    return $faker->domainWord;
+                }) . $bulkUserIncrement . $this->reuseInBulkMode('email-domain', function () use ($faker) {
+                    return '@' . $faker->freeEmailDomain;
+                }) : $faker->unique()->safeEmail;
+            $user->username = $this->inBulkMode ? $this->reuseInBulkMode('username-prefix', function () use ($faker) {
+                    return $faker->userName;
+                }) . $bulkUserIncrement : $faker->unique()->userName;
             $user->is_email_confirmed = true;
             $user->joined_at = Carbon::now();
             $user->save();
 
             $userIds[] = $user->id;
+            $bulkUserIncrement++;
         }
 
         // Put logic in an IF so that we only do the count() check if necessary
@@ -89,14 +114,22 @@ class FakeDataController implements RequestHandlerInterface
         $discussionIdsToRefresh = [];
 
         for ($i = 0; $i < $discussionCount; $i++) {
-            $author = $userQuery->first();
-            $discussion = Discussion::start($faker->sentence($faker->numberBetween(1, 6)), $author);
+            $author = $this->reuseInBulkMode('discussion-author', function () use ($userQuery) {
+                return $userQuery->first();
+            });
+            $title = $this->reuseInBulkMode('discussion-title', function () use ($faker) {
+                return $faker->sentence($faker->numberBetween(1, 6));
+            });
+            $discussion = Discussion::start($title, $author);
             $discussion->save();
 
             $discussionIds[] = $discussion->id;
             $discussionIdsToRefresh[] = $discussion->id;
 
-            $post = CommentPost::reply($discussion->id, implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10))), $author->id, null);
+            $content = $this->reuseInBulkMode('discussion-content', function () use ($faker) {
+                return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
+            });
+            $post = CommentPost::reply($discussion->id, $content, $author->id, null);
             $post->save();
         }
 
@@ -121,7 +154,9 @@ class FakeDataController implements RequestHandlerInterface
             }
 
             for ($i = 0; $i < $postCount; $i++) {
-                $author = $userQuery->first();
+                $author = $this->reuseInBulkMode('post-author', function () use ($userQuery) {
+                    return $userQuery->first();
+                });
                 $discussion = $discussionQuery->first();
 
                 // Add the randomly selected discussions to the list of discussions in need of a meta update
@@ -130,7 +165,10 @@ class FakeDataController implements RequestHandlerInterface
                     $discussionIdsToRefresh[] = $discussion->id;
                 }
 
-                $post = CommentPost::reply($discussion->id, implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10))), $author->id, null);
+                $content = $this->reuseInBulkMode('discussion-content', function () use ($faker) {
+                    return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
+                });
+                $post = CommentPost::reply($discussion->id, $content, $author->id, null);
                 $post->save();
             }
         }

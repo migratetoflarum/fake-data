@@ -1,6 +1,7 @@
 import app from 'flarum/app';
 import Modal from 'flarum/components/Modal';
 import Button from 'flarum/components/Button';
+import Switch from 'flarum/components/Switch';
 
 /* global m */
 
@@ -10,6 +11,7 @@ export default class FakeDataModal extends Modal {
     constructor() {
         super();
 
+        this.bulk = false;
         this.userCount = 0;
         this.discussionCount = 0;
         this.postCount = 0;
@@ -23,6 +25,16 @@ export default class FakeDataModal extends Modal {
 
     content() {
         return m('.Modal-body', [
+            m('.Form-group', [
+                Switch.component({
+                    state: this.bulk,
+                    onchange: value => {
+                        this.bulk = value;
+                    },
+                    children: app.translator.trans(translationPrefix + 'bulk-mode'),
+                }),
+                m('.helpText', app.translator.trans(translationPrefix + 'bulk-mode-description')),
+            ]),
             m('.Form-group', [
                 m('label', app.translator.trans(translationPrefix + 'user-count')),
                 m('input.FormControl', {
@@ -72,6 +84,7 @@ export default class FakeDataModal extends Modal {
                             url: '/api/fake-data',
                             method: 'POST',
                             data: {
+                                bulk: this.bulk,
                                 user_count: this.userCount,
                                 discussion_count: this.discussionCount,
                                 post_count: this.postCount,
