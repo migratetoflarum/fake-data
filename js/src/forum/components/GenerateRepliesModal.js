@@ -13,6 +13,7 @@ export default class GenerateRepliesModal extends Modal {
         this.userCount = 0;
         this.postCount = 0;
         this.dirty = false;
+        this.loading = false;
     }
 
     title() {
@@ -51,6 +52,8 @@ export default class GenerateRepliesModal extends Modal {
                     className: 'Button Button--primary',
                     children: app.translator.trans(translationPrefix + 'send'),
                     onclick: () => {
+                        this.loading = true;
+
                         app.request({
                             url: '/api/fake-data',
                             method: 'POST',
@@ -61,9 +64,14 @@ export default class GenerateRepliesModal extends Modal {
                                 post_count: this.postCount,
                             },
                         }).then(() => {
+                            this.loading = false;
                             app.modal.close();
 
                             window.location.reload();
+                        }).catch(e => {
+                            this.loading = false;
+                            m.redraw();
+                            throw e;
                         });
                     },
                 }),

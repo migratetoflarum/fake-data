@@ -14,6 +14,7 @@ export default class FakeDataModal extends Modal {
         this.discussionCount = 0;
         this.postCount = 0;
         this.dirty = false;
+        this.loading = false;
     }
 
     title() {
@@ -61,9 +62,12 @@ export default class FakeDataModal extends Modal {
             m('.Form-group', [
                 Button.component({
                     disabled: !this.dirty,
+                    loading: this.loading,
                     className: 'Button Button--primary',
                     children: app.translator.trans(translationPrefix + 'send'),
                     onclick: () => {
+                        this.loading = true;
+
                         app.request({
                             url: '/api/fake-data',
                             method: 'POST',
@@ -77,8 +81,13 @@ export default class FakeDataModal extends Modal {
                             this.discussionCount = 0;
                             this.postCount = 0;
                             this.dirty = false;
+                            this.loading = false;
 
                             m.redraw();
+                        }).catch(e => {
+                            this.loading = false;
+                            m.redraw();
+                            throw e;
                         });
                     },
                 }),
