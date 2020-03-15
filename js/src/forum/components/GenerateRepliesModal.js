@@ -67,7 +67,7 @@ export default class GenerateRepliesModal extends Modal {
                         this.loading = true;
 
                         app.request({
-                            url: '/api/fake-data',
+                            url: app.forum.attribute('apiUrl') + '/fake-data',
                             method: 'POST',
                             data: {
                                 bulk: this.bulk,
