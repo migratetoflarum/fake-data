@@ -3,7 +3,6 @@
 namespace MigrateToFlarum\FakeData;
 
 use Flarum\Extend;
-use MigrateToFlarum\FakeData\Controllers\FakeDataController;
 
 return [
     (new Extend\Frontend('admin'))
@@ -11,6 +10,6 @@ return [
     (new Extend\Frontend('forum'))
         ->js(__DIR__ . '/js/dist/forum.js'),
     (new Extend\Routes('api'))
-        ->post('/fake-data', 'migratetoflarum-fake-data', FakeDataController::class),
+        ->post('/fake-data', 'migratetoflarum-fake-data', Controllers\FakeDataController::class),
     new Extend\Locales(__DIR__ . '/resources/locale'),
 ];

@@ -11,6 +11,8 @@ use Flarum\User\AssertPermissionTrait;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
+use MigrateToFlarum\FakeData\Faker\FlarumInternetProvider;
+use MigrateToFlarum\FakeData\Faker\FlarumUniqueProvider;
 use MigrateToFlarum\FakeData\Validators\FakeDataParametersValidator;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -67,6 +69,8 @@ class FakeDataController implements RequestHandlerInterface
         ]);
 
         $faker = Factory::create();
+        $faker->addProvider(new FlarumInternetProvider($faker));
+        $faker->addProvider(new FlarumUniqueProvider($faker));
 
         $userIds = [];
         $bulkUserIncrement = 1;
@@ -76,11 +80,11 @@ class FakeDataController implements RequestHandlerInterface
             $user->email = $this->inBulkMode ? $this->reuseInBulkMode('email-prefix', function () use ($faker) {
                     return $faker->domainWord;
                 }) . $bulkUserIncrement . $this->reuseInBulkMode('email-domain', function () use ($faker) {
-                    return '@' . $faker->freeEmailDomain;
-                }) : $faker->unique()->safeEmail;
+                    return '@' . $faker->safeEmailDomain;
+                }) : $faker->flarumUnique()->safeEmail;
             $user->username = $this->inBulkMode ? $this->reuseInBulkMode('username-prefix', function () use ($faker) {
-                    return $faker->userName;
-                }) . $bulkUserIncrement : $faker->unique()->userName;
+                    return $faker->flarumUnique()->userName;
+                }) . $bulkUserIncrement : $faker->flarumUnique()->userName;
             $user->is_email_confirmed = true;
             $user->joined_at = Carbon::now();
             $user->save();
