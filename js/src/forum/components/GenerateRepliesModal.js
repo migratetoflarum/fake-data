@@ -8,8 +8,8 @@ import Switch from 'flarum/components/Switch';
 const translationPrefix = 'migratetoflarum-fake-data.forum.generator.';
 
 export default class GenerateRepliesModal extends Modal {
-    init() {
-        super.init();
+    oninit(vnode) {
+        super.oninit(vnode);
 
         this.bulk = false;
         this.userCount = 0;
@@ -30,8 +30,7 @@ export default class GenerateRepliesModal extends Modal {
                     onchange: value => {
                         this.bulk = value;
                     },
-                    children: app.translator.trans(translationPrefix + 'bulk-mode'),
-                }),
+                }, app.translator.trans(translationPrefix + 'bulk-mode')),
                 m('.helpText', app.translator.trans(translationPrefix + 'bulk-mode-description')),
             ]),
             m('.Form-group', [
@@ -40,10 +39,10 @@ export default class GenerateRepliesModal extends Modal {
                     type: 'number',
                     min: '0',
                     value: this.userCount + '',
-                    oninput: m.withAttr('value', value => {
-                        this.userCount = parseInt(value);
+                    oninput: event => {
+                        this.userCount = parseInt(event.target.value);
                         this.dirty = true;
-                    }),
+                    },
                 }),
             ]),
             m('.Form-group', [
@@ -52,28 +51,27 @@ export default class GenerateRepliesModal extends Modal {
                     type: 'number',
                     min: '0',
                     value: this.postCount + '',
-                    oninput: m.withAttr('value', value => {
-                        this.postCount = parseInt(value);
+                    oninput: event => {
+                        this.postCount = parseInt(event.target.value);
                         this.dirty = true;
-                    }),
+                    },
                 }),
             ]),
             m('.Form-group', [
                 Button.component({
                     disabled: !this.dirty,
                     className: 'Button Button--primary',
-                    children: app.translator.trans(translationPrefix + 'send'),
                     onclick: () => {
                         this.loading = true;
 
                         app.request({
                             url: app.forum.attribute('apiUrl') + '/fake-data',
                             method: 'POST',
-                            data: {
+                            body: {
                                 bulk: this.bulk,
                                 user_count: this.userCount,
                                 discussion_count: 0,
-                                discussion_ids: [this.props.discussion.id()],
+                                discussion_ids: [this.attrs.discussion.id()],
                                 post_count: this.postCount,
                             },
                         }).then(() => {
@@ -87,7 +85,7 @@ export default class GenerateRepliesModal extends Modal {
                             throw e;
                         });
                     },
-                }),
+                }, app.translator.trans(translationPrefix + 'send')),
             ]),
         ]);
     }

@@ -9,11 +9,10 @@ app.initializers.add('migratetoflarum-fake-data', app => {
         items.add('migratetoflarum-fake-data', Button.component({
             icon: 'fas fa-database',
             onclick() {
-                app.modal.show(new GenerateRepliesModal({
+                app.modal.show(GenerateRepliesModal, {
                     discussion,
-                }));
+                });
             },
-            children: app.translator.trans('migratetoflarum-fake-data.forum.link.generate-replies'),
-        }));
+        }, app.translator.trans('migratetoflarum-fake-data.forum.link.generate-replies')));
     })
 });

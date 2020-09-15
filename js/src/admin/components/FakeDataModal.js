@@ -8,8 +8,8 @@ import Switch from 'flarum/components/Switch';
 const translationPrefix = 'migratetoflarum-fake-data.admin.generator.';
 
 export default class FakeDataModal extends Modal {
-    constructor() {
-        super();
+    oninit(vnode) {
+        super.oninit(vnode);
 
         this.bulk = false;
         this.userCount = 0;
@@ -31,8 +31,7 @@ export default class FakeDataModal extends Modal {
                     onchange: value => {
                         this.bulk = value;
                     },
-                    children: app.translator.trans(translationPrefix + 'bulk-mode'),
-                }),
+                }, app.translator.trans(translationPrefix + 'bulk-mode')),
                 m('.helpText', app.translator.trans(translationPrefix + 'bulk-mode-description')),
             ]),
             m('.Form-group', [
@@ -41,10 +40,10 @@ export default class FakeDataModal extends Modal {
                     type: 'number',
                     min: '0',
                     value: this.userCount + '',
-                    oninput: m.withAttr('value', value => {
-                        this.userCount = parseInt(value);
+                    oninput: event => {
+                        this.userCount = parseInt(event.target.value);
                         this.dirty = true;
-                    }),
+                    },
                 }),
             ]),
             m('.Form-group', [
@@ -53,10 +52,10 @@ export default class FakeDataModal extends Modal {
                     type: 'number',
                     min: '0',
                     value: this.discussionCount + '',
-                    oninput: m.withAttr('value', value => {
-                        this.discussionCount = parseInt(value);
+                    oninput: event => {
+                        this.discussionCount = parseInt(event.target.value);
                         this.dirty = true;
-                    }),
+                    },
                 }),
             ]),
             m('.Form-group', [
@@ -65,10 +64,10 @@ export default class FakeDataModal extends Modal {
                     type: 'number',
                     min: '0',
                     value: this.postCount + '',
-                    oninput: m.withAttr('value', value => {
-                        this.postCount = parseInt(value);
+                    oninput: event => {
+                        this.postCount = parseInt(event.target.value);
                         this.dirty = true;
-                    }),
+                    },
                 }),
             ]),
             m('.Form-group', [
@@ -76,14 +75,13 @@ export default class FakeDataModal extends Modal {
                     disabled: !this.dirty,
                     loading: this.loading,
                     className: 'Button Button--primary',
-                    children: app.translator.trans(translationPrefix + 'send'),
                     onclick: () => {
                         this.loading = true;
 
                         app.request({
                             url: app.forum.attribute('apiUrl') + '/fake-data',
                             method: 'POST',
-                            data: {
+                            body: {
                                 bulk: this.bulk,
                                 user_count: this.userCount,
                                 discussion_count: this.discussionCount,
@@ -103,7 +101,7 @@ export default class FakeDataModal extends Modal {
                             throw e;
                         });
                     },
-                }),
+                }, app.translator.trans(translationPrefix + 'send')),
             ]),
         ]);
     }
