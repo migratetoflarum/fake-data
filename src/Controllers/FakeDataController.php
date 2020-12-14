@@ -24,6 +24,7 @@ class FakeDataController implements RequestHandlerInterface
     protected $validator;
     protected $inBulkMode = false;
     protected $bulkModeCache = [];
+    protected $timer;
 
     public function __construct(FakeDataParametersValidator $validator)
     {
@@ -83,7 +84,7 @@ class FakeDataController implements RequestHandlerInterface
                     return $faker->flarumUnique()->userName;
                 }) . $bulkUserIncrement : $faker->flarumUnique()->userName;
             $user->is_email_confirmed = true;
-            $user->joined_at = Carbon::now();
+            $user->joined_at = $this->getTime();
             $user->save();
 
             $userIds[] = $user->id;
@@ -131,6 +132,7 @@ class FakeDataController implements RequestHandlerInterface
                 return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
             });
             $post = CommentPost::reply($discussion->id, $content, $author->id, null);
+            $post->created_at = $this->getTime();
             $post->save();
         }
 
@@ -170,6 +172,7 @@ class FakeDataController implements RequestHandlerInterface
                     return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
                 });
                 $post = CommentPost::reply($discussion->id, $content, $author->id, null);
+                $post->created_at = $this->getTime();
                 $post->save();
             }
         }
@@ -186,5 +189,15 @@ class FakeDataController implements RequestHandlerInterface
         }
 
         return new EmptyResponse(204);
+    }
+
+    public function getTime() {
+        if (is_null($this->timer)) {
+            $this->timer = Carbon::now()->subDays(15);
+        }
+
+        $this->timer->addMinutes(rand(0, 10));
+
+        return $this->timer;
     }
 }
