@@ -25,10 +25,12 @@ class FakeDataController implements RequestHandlerInterface
     protected $inBulkMode = false;
     protected $bulkModeCache = [];
     protected $timer;
+    protected $translator;
 
-    public function __construct(FakeDataParametersValidator $validator)
+    public function __construct(FakeDataParametersValidator $validator, TranslatorInterface $translator)
     {
         $this->validator = $validator;
+        $this->translator = $translator;
     }
 
     protected function reuseInBulkMode(string $key, callable $callback)
@@ -106,7 +108,7 @@ class FakeDataController implements RequestHandlerInterface
             if ($userQuery->count() === 0) {
                 throw new ValidationException([
                     'users' => [
-                        app(TranslatorInterface::class)->trans('migratetoflarum-fake-data.api.no-users-matched'),
+                        $this->translator->trans('migratetoflarum-fake-data.api.no-users-matched'),
                     ],
                 ]);
             }
@@ -151,7 +153,7 @@ class FakeDataController implements RequestHandlerInterface
             if ($discussionQuery->count() === 0) {
                 throw new ValidationException([
                     'discussions' => [
-                        app(TranslatorInterface::class)->trans('migratetoflarum-fake-data.api.no-discussions-matched'),
+                        $this->translator->trans('migratetoflarum-fake-data.api.no-discussions-matched'),
                     ],
                 ]);
             }
