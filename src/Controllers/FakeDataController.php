@@ -7,7 +7,6 @@ use Faker\Factory;
 use Flarum\Discussion\Discussion;
 use Flarum\Foundation\ValidationException;
 use Flarum\Post\CommentPost;
-use Flarum\User\AssertPermissionTrait;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -22,8 +21,6 @@ use Laminas\Diactoros\Response\EmptyResponse;
 
 class FakeDataController implements RequestHandlerInterface
 {
-    use AssertPermissionTrait;
-
     protected $validator;
     protected $inBulkMode = false;
     protected $bulkModeCache = [];
@@ -48,7 +45,7 @@ class FakeDataController implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $this->assertAdmin($request->getAttribute('actor'));
+        $request->getAttribute('actor')->assertAdmin();
 
         $attributes = $request->getParsedBody();
 
