@@ -195,7 +195,7 @@ class FakeDataController implements RequestHandlerInterface
 
     public function getTime() {
         if (is_null($this->timer)) {
-            $this->timer = Carbon::now()->subDays(15);
+            $this->timer = Carbon::now();
         }
 
         $this->timer->addMinutes(rand(0, 10));
