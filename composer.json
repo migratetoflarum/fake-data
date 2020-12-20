@@ -18,7 +18,8 @@
     ],
     "support": {
         "issues": "https://github.com/migratetoflarum/fake-data/issues",
-        "source": "https://github.com/migratetoflarum/fake-data"
+        "source": "https://github.com/migratetoflarum/fake-data",
+        "forum": "https://discuss.flarum.org/d/21160"
     },
     "require": {
         "flarum/core": "^0.1.0-beta.14",
