@@ -7,7 +7,7 @@ import Switch from 'flarum/components/Switch';
 
 const translationPrefix = 'migratetoflarum-fake-data.admin.generator.';
 
-export default class FakeDataModal extends ExtensionPage {
+export default class FakeDataExtensionSettingsPage extends ExtensionPage {
     bulk = false;
     userCount = 0;
     discussionCount = 0;
