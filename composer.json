@@ -22,7 +22,7 @@
         "forum": "https://discuss.flarum.org/d/21160"
     },
     "require": {
-        "flarum/core": "^0.1.0-beta.14",
+        "flarum/core": "^0.1.0-beta.15",
         "fzaninotto/faker": "^1.8"
     },
     "extra": {

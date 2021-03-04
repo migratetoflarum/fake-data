@@ -1,5 +1,5 @@
 import app from 'flarum/app';
-import Modal from 'flarum/components/Modal';
+import ExtensionPage from 'flarum/components/ExtensionPage';
 import Button from 'flarum/components/Button';
 import Switch from 'flarum/components/Switch';
 
@@ -7,7 +7,7 @@ import Switch from 'flarum/components/Switch';
 
 const translationPrefix = 'migratetoflarum-fake-data.admin.generator.';
 
-export default class FakeDataModal extends Modal {
+export default class FakeDataPage extends ExtensionPage {
     oninit(vnode) {
         super.oninit(vnode);
 
@@ -19,12 +19,8 @@ export default class FakeDataModal extends Modal {
         this.loading = false;
     }
 
-    title() {
-        return app.translator.trans(translationPrefix + 'title');
-    }
-
     content() {
-        return m('.Modal-body', [
+        return m('.ExtensionPage-settings', m('.container', [
             m('.Form-group', [
                 Switch.component({
                     state: this.bulk,
@@ -103,6 +99,6 @@ export default class FakeDataModal extends Modal {
                     },
                 }, app.translator.trans(translationPrefix + 'send')),
             ]),
-        ]);
+        ]));
     }
 }
