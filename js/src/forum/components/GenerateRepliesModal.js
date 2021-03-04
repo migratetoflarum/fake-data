@@ -60,6 +60,7 @@ export default class GenerateRepliesModal extends Modal {
             m('.Form-group', [
                 Button.component({
                     disabled: !this.dirty,
+                    loading: this.loading,
                     className: 'Button Button--primary',
                     onclick: () => {
                         this.loading = true;
