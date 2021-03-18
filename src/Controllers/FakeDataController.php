@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Faker\Factory;
 use Flarum\Discussion\Discussion;
 use Flarum\Foundation\ValidationException;
+use Flarum\Locale\Translator;
 use Flarum\Post\CommentPost;
 use Flarum\Tags\Tag;
 use Flarum\User\User;
@@ -18,17 +19,18 @@ use MigrateToFlarum\FakeData\Validators\FakeDataParametersValidator;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Symfony\Component\Translation\TranslatorInterface;
 
 class FakeDataController implements RequestHandlerInterface
 {
     protected $validator;
+    protected $translator;
     protected $inBulkMode = false;
     protected $bulkModeCache = [];
 
-    public function __construct(FakeDataParametersValidator $validator)
+    public function __construct(FakeDataParametersValidator $validator, Translator $translator)
     {
         $this->validator = $validator;
+        $this->translator = $translator;
     }
 
     protected function reuseInBulkMode(string $key, callable $callback)
@@ -107,7 +109,7 @@ class FakeDataController implements RequestHandlerInterface
             if ($userQuery->count() === 0) {
                 throw new ValidationException([
                     'users' => [
-                        app(TranslatorInterface::class)->trans('migratetoflarum-fake-data.api.no-users-matched'),
+                        $this->translator->trans('migratetoflarum-fake-data.api.no-users-matched'),
                     ],
                 ]);
             }
@@ -180,7 +182,7 @@ class FakeDataController implements RequestHandlerInterface
             if ($discussionQuery->count() === 0) {
                 throw new ValidationException([
                     'discussions' => [
-                        app(TranslatorInterface::class)->trans('migratetoflarum-fake-data.api.no-discussions-matched'),
+                        $this->translator->trans('migratetoflarum-fake-data.api.no-discussions-matched'),
                     ],
                 ]);
             }
