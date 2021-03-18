@@ -113,6 +113,7 @@ class FakeDataController implements RequestHandlerInterface
 
         $discussionIds = [];
         $discussionIdsToRefresh = [];
+        $userIdsToRefresh = [];
 
         for ($i = 0; $i < $discussionCount; $i++) {
             $author = $this->reuseInBulkMode('discussion-author', function () use ($userQuery) {
@@ -126,6 +127,10 @@ class FakeDataController implements RequestHandlerInterface
 
             $discussionIds[] = $discussion->id;
             $discussionIdsToRefresh[] = $discussion->id;
+
+            if (!in_array($author->id, $userIdsToRefresh)) {
+                $userIdsToRefresh[] = $author->id;
+            }
 
             $content = $this->reuseInBulkMode('discussion-content', function () use ($faker) {
                 return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
@@ -166,6 +171,10 @@ class FakeDataController implements RequestHandlerInterface
                     $discussionIdsToRefresh[] = $discussion->id;
                 }
 
+                if (!in_array($author->id, $userIdsToRefresh)) {
+                    $userIdsToRefresh[] = $author->id;
+                }
+
                 $content = $this->reuseInBulkMode('discussion-content', function () use ($faker) {
                     return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
                 });
@@ -181,6 +190,16 @@ class FakeDataController implements RequestHandlerInterface
                     $discussion->refreshCommentCount();
                     $discussion->refreshParticipantCount();
                     $discussion->save();
+                });
+            });
+        }
+
+        if (count($userIdsToRefresh)) {
+            User::query()->whereIn('id', $userIdsToRefresh)->chunk(100, function (Collection $users) {
+                $users->each(function (User $user) {
+                    $user->refreshDiscussionCount();
+                    $user->refreshCommentCount();
+                    $user->save();
                 });
             });
         }
