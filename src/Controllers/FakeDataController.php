@@ -7,9 +7,11 @@ use Faker\Factory;
 use Flarum\Discussion\Discussion;
 use Flarum\Foundation\ValidationException;
 use Flarum\Post\CommentPost;
+use Flarum\Tags\Tag;
 use Flarum\User\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
+use Laminas\Diactoros\Response\EmptyResponse;
 use MigrateToFlarum\FakeData\Faker\FlarumInternetProvider;
 use MigrateToFlarum\FakeData\Faker\FlarumUniqueProvider;
 use MigrateToFlarum\FakeData\Validators\FakeDataParametersValidator;
@@ -17,7 +19,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Symfony\Component\Translation\TranslatorInterface;
-use Laminas\Diactoros\Response\EmptyResponse;
 
 class FakeDataController implements RequestHandlerInterface
 {
@@ -54,6 +55,7 @@ class FakeDataController implements RequestHandlerInterface
         $userCount = Arr::get($attributes, 'user_count', 0);
         $providedUserIds = Arr::get($attributes, 'user_ids');
         $discussionCount = Arr::get($attributes, 'discussion_count', 0);
+        $providedTagIds = Arr::get($attributes, 'tag_ids');
         $providedDiscussionIds = Arr::get($attributes, 'discussion_ids');
         $postCount = Arr::get($attributes, 'post_count', 0);
 
@@ -124,6 +126,30 @@ class FakeDataController implements RequestHandlerInterface
             });
             $discussion = Discussion::start($title, $author);
             $discussion->save();
+
+            $tagIds = $this->reuseInBulkMode('discussion-tags', function () use ($providedTagIds) {
+                if ($providedTagIds === 'random') {
+                    // Take one random primary tag
+                    $randomTag = Tag::query()->whereNotNull('position')->inRandomOrder()->first();
+
+                    if (!$randomTag) {
+                        return [];
+                    }
+
+                    // If it's a primary tag child, add the parent as well
+                    if ($randomTag->parent_id) {
+                        return [$randomTag->id, $randomTag->parent_id];
+                    }
+
+                    return [$randomTag->id];
+                }
+
+                return $providedTagIds ?: [];
+            });
+
+            if (count($tagIds)) {
+                $discussion->tags()->attach($tagIds);
+            }
 
             $discussionIds[] = $discussion->id;
             $discussionIdsToRefresh[] = $discussion->id;
