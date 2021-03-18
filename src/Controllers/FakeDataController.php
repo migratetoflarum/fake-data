@@ -26,6 +26,11 @@ class FakeDataController implements RequestHandlerInterface
     protected $translator;
     protected $inBulkMode = false;
     protected $bulkModeCache = [];
+    /**
+     * @var $date Carbon
+     */
+    protected $date;
+    protected $dateInterval;
 
     public function __construct(FakeDataParametersValidator $validator, Translator $translator)
     {
@@ -46,6 +51,15 @@ class FakeDataController implements RequestHandlerInterface
         return $this->bulkModeCache[$key];
     }
 
+    protected function nextDate()
+    {
+        $date = $this->date->copy();
+
+        $this->date->addSeconds($this->dateInterval);
+
+        return $date;
+    }
+
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $request->getAttribute('actor')->assertAdmin();
@@ -53,6 +67,11 @@ class FakeDataController implements RequestHandlerInterface
         $attributes = $request->getParsedBody();
 
         $this->inBulkMode = (bool)Arr::get($attributes, 'bulk');
+
+        $dateInput = Arr::get($attributes, 'date_start');
+        $this->date = $dateInput ? Carbon::parse($dateInput) : Carbon::now();
+        $intervalInput = Arr::get($attributes, 'date_interval');
+        $this->dateInterval = is_numeric($intervalInput) ? max((int)$intervalInput, 0) : 1;
 
         $userCount = Arr::get($attributes, 'user_count', 0);
         $providedUserIds = Arr::get($attributes, 'user_ids');
@@ -87,7 +106,7 @@ class FakeDataController implements RequestHandlerInterface
                     return $faker->flarumUnique()->userName;
                 }) . $bulkUserIncrement : $faker->flarumUnique()->userName;
             $user->is_email_confirmed = true;
-            $user->joined_at = Carbon::now();
+            $user->joined_at = $this->nextDate();
             $user->save();
 
             $userIds[] = $user->id;
@@ -127,6 +146,7 @@ class FakeDataController implements RequestHandlerInterface
                 return $faker->sentence($faker->numberBetween(1, 6));
             });
             $discussion = Discussion::start($title, $author);
+            $discussion->created_at = $this->nextDate();
             $discussion->save();
 
             $tagIds = $this->reuseInBulkMode('discussion-tags', function () use ($providedTagIds) {
@@ -164,6 +184,7 @@ class FakeDataController implements RequestHandlerInterface
                 return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
             });
             $post = CommentPost::reply($discussion->id, $content, $author->id, null);
+            $post->created_at = $discussion->created_at;
             $post->save();
         }
 
@@ -207,6 +228,7 @@ class FakeDataController implements RequestHandlerInterface
                     return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
                 });
                 $post = CommentPost::reply($discussion->id, $content, $author->id, null);
+                $post->created_at = $this->nextDate();
                 $post->save();
             }
         }

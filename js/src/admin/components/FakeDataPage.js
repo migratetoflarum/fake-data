@@ -17,6 +17,8 @@ export default class FakeDataPage extends ExtensionPage {
         this.discussionCount = 0;
         this.discussionTag = 'none';
         this.postCount = 0;
+        this.dateStart = '';
+        this.dateInterval = '';
         this.dirty = false;
         this.loading = false;
     }
@@ -104,6 +106,27 @@ export default class FakeDataPage extends ExtensionPage {
                     },
                 }),
             ]),
+            m('.Form-group.FakeData-Date', [
+                m('label', app.translator.trans(translationPrefix + 'date')),
+                m('input.FormControl', {
+                    type: 'text',
+                    value: this.dateStart + '',
+                    oninput: event => {
+                        this.dateStart = event.target.value;
+                        this.dirty = true;
+                    },
+                    placeholder: app.translator.trans(translationPrefix + 'date-start-placeholder'),
+                }),
+                m('input.FormControl', {
+                    type: 'text',
+                    value: this.dateInterval + '',
+                    oninput: event => {
+                        this.dateInterval = event.target.value;
+                        this.dirty = true;
+                    },
+                    placeholder: app.translator.trans(translationPrefix + 'date-interval-placeholder'),
+                }),
+            ]),
             m('.Form-group', [
                 Button.component({
                     disabled: !this.dirty,
@@ -129,6 +152,8 @@ export default class FakeDataPage extends ExtensionPage {
                                 discussion_count: this.discussionCount,
                                 tag_ids,
                                 post_count: this.postCount,
+                                date_start: this.dateStart,
+                                date_interval: this.dateInterval,
                             },
                         }).then(() => {
                             this.userCount = 0;
