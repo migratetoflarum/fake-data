@@ -6,7 +6,7 @@ use Flarum\Foundation\AbstractValidator;
 
 class FakeDataParametersValidator extends AbstractValidator
 {
-    protected function getRules()
+    protected function getRules(): array
     {
         return [
             'user_count' => 'required|integer|min:0',
