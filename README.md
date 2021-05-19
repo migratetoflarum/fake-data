@@ -23,18 +23,7 @@ If you pass zero for users or discussions, you can provide `user_ids` and/or `di
 
 ## Installation
 
-Use [Bazaar](https://discuss.flarum.org/d/5151-flagrow-bazaar-the-extension-marketplace) or install manually:
-
-```bash
-composer require migratetoflarum/fake-data
-```
-
-## Updating
-
-```bash
-composer update migratetoflarum/fake-data
-php flarum cache:clear
-```
+    composer require migratetoflarum/fake-data:*
 
 ## A MigrateToFlarum extension
 

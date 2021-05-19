@@ -1,7 +1,7 @@
 import app from 'flarum/app';
-import {extend} from 'flarum/extend';
-import Button from 'flarum/components/Button';
-import DiscussionControls from 'flarum/utils/DiscussionControls';
+import {extend} from 'flarum/common/extend';
+import Button from 'flarum/common/components/Button';
+import DiscussionControls from 'flarum/forum/utils/DiscussionControls';
 import GenerateRepliesModal from './components/GenerateRepliesModal';
 
 app.initializers.add('migratetoflarum-fake-data', app => {

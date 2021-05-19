@@ -1,7 +1,7 @@
 import app from 'flarum/app';
-import Modal from 'flarum/components/Modal';
-import Button from 'flarum/components/Button';
-import Switch from 'flarum/components/Switch';
+import Modal from 'flarum/common/components/Modal';
+import Button from 'flarum/common/components/Button';
+import Switch from 'flarum/common/components/Switch';
 
 /* global m */
 

@@ -1,8 +1,8 @@
 import app from 'flarum/app';
-import ExtensionPage from 'flarum/components/ExtensionPage';
-import Button from 'flarum/components/Button';
-import Switch from 'flarum/components/Switch';
-import icon from 'flarum/helpers/icon';
+import ExtensionPage from 'flarum/admin/components/ExtensionPage';
+import Button from 'flarum/common/components/Button';
+import Switch from 'flarum/common/components/Switch';
+import icon from 'flarum/common/helpers/icon';
 
 /* global m, flarum */
 
