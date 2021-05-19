@@ -33,7 +33,10 @@
                 "name": "fas fa-database",
                 "backgroundColor": "#e7672e",
                 "color": "#fafafa"
-            }
+            },
+            "optional-dependencies": [
+                "flarum/tags"
+            ]
         },
         "flagrow": {
             "discuss": "https://discuss.flarum.org/d/21160"
