@@ -65,7 +65,7 @@ class FakeDataController implements RequestHandlerInterface
         $request->getAttribute('actor')->assertAdmin();
 
         $attributes = $request->getParsedBody();
-
+        
         $this->inBulkMode = (bool)Arr::get($attributes, 'bulk');
 
         $dateInput = Arr::get($attributes, 'date_start');
@@ -186,6 +186,8 @@ class FakeDataController implements RequestHandlerInterface
             $post = CommentPost::reply($discussion->id, $content, $author->id, null);
             $post->created_at = $discussion->created_at;
             $post->save();
+            $discussion->setFirstPost($post);
+            $discussion->save();
         }
 
         // Put logic in an IF so that we only do the count() check if necessary
@@ -253,6 +255,14 @@ class FakeDataController implements RequestHandlerInterface
                 });
             });
         }
+
+        Tag::query()->chunk(100, function (Collection $tags) {
+            $tags->each(function (Tag $tag) {
+                $tag->discussion_count = $tag->discussions()->count();
+                $tag->refreshLastPostedDiscussion();
+                $tag->save();
+            });
+        });
 
         return new EmptyResponse(204);
     }
