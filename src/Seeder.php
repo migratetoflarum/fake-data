@@ -39,7 +39,7 @@ class Seeder
         $faker->addProvider(new FlarumInternetProvider($faker));
         $faker->addProvider(new FlarumUniqueProvider($faker));
 
-        $userIds = [];
+        $newUserIds = [];
         $bulkUserIncrement = 1;
 
         $output->info("Seeding {$config->userCount} users");
@@ -59,7 +59,7 @@ class Seeder
             $user->joined_at = $config->nextDate();
             $user->save();
 
-            $userIds[] = $user->id;
+            $newUserIds[] = $user->id;
             $bulkUserIncrement++;
 
             $output->progressAdvance();
@@ -72,7 +72,7 @@ class Seeder
             $userQuery = User::query()->inRandomOrder();
 
             if ($config->userCount > 0) {
-                $userQuery->whereIn('id', $userIds);
+                $userQuery->whereIn('id', $newUserIds);
             }
 
             if (is_array($config->providedUserIds)) {
@@ -90,7 +90,7 @@ class Seeder
             $output->info("Will use $count users for discussion and post seed");
         }
 
-        $discussionIds = [];
+        $newDiscussionIds = [];
         $discussionIdsToRefresh = [];
         $userIdsToRefresh = [];
         $tagIdsToRefresh = [];
@@ -139,7 +139,7 @@ class Seeder
                 }
             }
 
-            $discussionIds[] = $discussion->id;
+            $newDiscussionIds[] = $discussion->id;
             $discussionIdsToRefresh[] = $discussion->id;
 
             if (!in_array($author->id, $userIdsToRefresh)) {
@@ -163,7 +163,7 @@ class Seeder
             $discussionQuery = Discussion::query()->inRandomOrder();
 
             if ($config->discussionCount > 0) {
-                $discussionQuery->whereIn('id', $discussionIds);
+                $discussionQuery->whereIn('id', $newDiscussionIds);
             }
 
             if (is_array($config->providedDiscussionIds)) {
@@ -216,7 +216,13 @@ class Seeder
             $output->info('Updating meta of ' . count($discussionIdsToRefresh) . ' discussions');
             $output->progressStart(count($discussionIdsToRefresh));
 
-            Discussion::query()->whereIn('id', $discussionIdsToRefresh)->each(function (Discussion $discussion) use ($output) {
+            Discussion::query()->whereIn('id', $discussionIdsToRefresh)->each(function (Discussion $discussion) use ($newDiscussionIds, $output) {
+                // Not all discussions need their first post refreshed
+                // This IF will save some precious time when seeding large number of replies only
+                if (in_array($discussion->id, $newDiscussionIds)) {
+                    $discussion->setFirstPost($discussion->comments()->oldest()->first());
+                }
+
                 $discussion->refreshLastPost();
                 $discussion->refreshCommentCount();
                 $discussion->refreshParticipantCount();
