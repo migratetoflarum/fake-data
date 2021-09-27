@@ -1,24 +1,18 @@
-import app from 'flarum/app';
+import app from 'flarum/forum/app';
 import Modal from 'flarum/common/components/Modal';
 import Button from 'flarum/common/components/Button';
 import Switch from 'flarum/common/components/Switch';
 
-/* global m */
-
 const translationPrefix = 'migratetoflarum-fake-data.forum.generator.';
 
 export default class GenerateRepliesModal extends Modal {
-    oninit(vnode) {
-        super.oninit(vnode);
-
-        this.bulk = false;
-        this.userCount = 0;
-        this.postCount = 0;
-        this.dateStart = '';
-        this.dateInterval = '';
-        this.dirty = false;
-        this.loading = false;
-    }
+    bulk: boolean = false
+    userCount: number = 0
+    postCount: number = 0
+    dateStart: string = ''
+    dateInterval: string = ''
+    dirty: boolean = false
+    loading: boolean = false
 
     title() {
         return app.translator.trans(translationPrefix + 'title');
@@ -29,7 +23,7 @@ export default class GenerateRepliesModal extends Modal {
             m('.Form-group', [
                 Switch.component({
                     state: this.bulk,
-                    onchange: value => {
+                    onchange: (value: boolean) => {
                         this.bulk = value;
                     },
                 }, app.translator.trans(translationPrefix + 'bulk-mode')),
@@ -41,8 +35,8 @@ export default class GenerateRepliesModal extends Modal {
                     type: 'number',
                     min: '0',
                     value: this.userCount + '',
-                    oninput: event => {
-                        this.userCount = parseInt(event.target.value);
+                    oninput: (event: Event) => {
+                        this.userCount = parseInt((event.target as HTMLInputElement).value);
                         this.dirty = true;
                     },
                 }),
@@ -53,8 +47,8 @@ export default class GenerateRepliesModal extends Modal {
                     type: 'number',
                     min: '0',
                     value: this.postCount + '',
-                    oninput: event => {
-                        this.postCount = parseInt(event.target.value);
+                    oninput: (event: Event) => {
+                        this.postCount = parseInt((event.target as HTMLInputElement).value);
                         this.dirty = true;
                     },
                 }),
@@ -64,8 +58,8 @@ export default class GenerateRepliesModal extends Modal {
                 m('input.FormControl', {
                     type: 'text',
                     value: this.dateStart + '',
-                    oninput: event => {
-                        this.dateStart = event.target.value;
+                    oninput: (event: Event) => {
+                        this.dateStart = (event.target as HTMLInputElement).value;
                         this.dirty = true;
                     },
                     placeholder: app.translator.trans(translationPrefix + 'date-start-placeholder'),
@@ -73,8 +67,8 @@ export default class GenerateRepliesModal extends Modal {
                 m('input.FormControl', {
                     type: 'text',
                     value: this.dateInterval + '',
-                    oninput: event => {
-                        this.dateInterval = event.target.value;
+                    oninput: (event: Event) => {
+                        this.dateInterval = (event.target as HTMLInputElement).value;
                         this.dirty = true;
                     },
                     placeholder: app.translator.trans(translationPrefix + 'date-interval-placeholder'),

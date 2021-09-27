@@ -1,34 +1,28 @@
-import app from 'flarum/app';
+import app from 'flarum/admin/app';
 import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import Button from 'flarum/common/components/Button';
 import Switch from 'flarum/common/components/Switch';
 import icon from 'flarum/common/helpers/icon';
 
-/* global m, flarum */
-
 const translationPrefix = 'migratetoflarum-fake-data.admin.generator.';
 
 export default class FakeDataPage extends ExtensionPage {
-    oninit(vnode) {
-        super.oninit(vnode);
-
-        this.bulk = false;
-        this.userCount = 0;
-        this.discussionCount = 0;
-        this.discussionTag = 'none';
-        this.postCount = 0;
-        this.dateStart = '';
-        this.dateInterval = '';
-        this.dirty = false;
-        this.loading = false;
-    }
+    bulk: boolean = false
+    userCount: number = 0
+    discussionCount: number = 0
+    discussionTag: string = 'none'
+    postCount: number = 0
+    dateStart: string = ''
+    dateInterval: string = ''
+    dirty: boolean = false
+    loading: boolean = false
 
     content() {
         return m('.ExtensionPage-settings', m('.container', [
             m('.Form-group', [
                 Switch.component({
                     state: this.bulk,
-                    onchange: value => {
+                    onchange: (value: boolean) => {
                         this.bulk = value;
                     },
                 }, app.translator.trans(translationPrefix + 'bulk-mode')),
@@ -40,8 +34,8 @@ export default class FakeDataPage extends ExtensionPage {
                     type: 'number',
                     min: '0',
                     value: this.userCount + '',
-                    oninput: event => {
-                        this.userCount = parseInt(event.target.value);
+                    oninput: (event: Event) => {
+                        this.userCount = parseInt((event.target as HTMLInputElement).value);
                         this.dirty = true;
                     },
                 }),
@@ -52,8 +46,8 @@ export default class FakeDataPage extends ExtensionPage {
                     type: 'number',
                     min: '0',
                     value: this.discussionCount + '',
-                    oninput: event => {
-                        this.discussionCount = parseInt(event.target.value);
+                    oninput: (event: Event) => {
+                        this.discussionCount = parseInt((event.target as HTMLInputElement).value);
                         this.dirty = true;
                     },
                 }),
@@ -62,8 +56,8 @@ export default class FakeDataPage extends ExtensionPage {
                 m('label', app.translator.trans(translationPrefix + 'discussion-tags')),
                 m('span.Select', [
                     m('select.Select-input.FormControl', {
-                        onchange: event => {
-                            this.discussionTag = event.target.value;
+                        onchange: (event: Event) => {
+                            this.discussionTag = (event.target as HTMLInputElement).value;
                         },
                         value: this.discussionTag,
                     }, [
@@ -73,7 +67,7 @@ export default class FakeDataPage extends ExtensionPage {
                         m('option', {
                             value: 'random',
                         }, app.translator.trans(translationPrefix + 'discussion-tags-random')),
-                        flarum.core.compat['tags/utils/sortTags'](app.store.all('tags')).map(tag => {
+                        flarum.core.compat['tags/utils/sortTags'](app.store.all('tags')).map((tag: any) => {
                             let label = tag.name();
                             const ids = [tag.id()];
 
@@ -100,8 +94,8 @@ export default class FakeDataPage extends ExtensionPage {
                     type: 'number',
                     min: '0',
                     value: this.postCount + '',
-                    oninput: event => {
-                        this.postCount = parseInt(event.target.value);
+                    oninput: (event: Event) => {
+                        this.postCount = parseInt((event.target as HTMLInputElement).value);
                         this.dirty = true;
                     },
                 }),
@@ -111,8 +105,8 @@ export default class FakeDataPage extends ExtensionPage {
                 m('input.FormControl', {
                     type: 'text',
                     value: this.dateStart + '',
-                    oninput: event => {
-                        this.dateStart = event.target.value;
+                    oninput: (event: Event) => {
+                        this.dateStart = (event.target as HTMLInputElement).value;
                         this.dirty = true;
                     },
                     placeholder: app.translator.trans(translationPrefix + 'date-start-placeholder'),
@@ -120,8 +114,8 @@ export default class FakeDataPage extends ExtensionPage {
                 m('input.FormControl', {
                     type: 'text',
                     value: this.dateInterval + '',
-                    oninput: event => {
-                        this.dateInterval = event.target.value;
+                    oninput: (event: Event) => {
+                        this.dateInterval = (event.target as HTMLInputElement).value;
                         this.dirty = true;
                     },
                     placeholder: app.translator.trans(translationPrefix + 'date-interval-placeholder'),
@@ -135,7 +129,7 @@ export default class FakeDataPage extends ExtensionPage {
                     onclick: () => {
                         this.loading = true;
 
-                        let tag_ids = [];
+                        let tag_ids: string | string[] = [];
 
                         if (this.discussionTag === 'random') {
                             tag_ids = 'random';
