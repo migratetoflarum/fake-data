@@ -2,24 +2,32 @@
 
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/migratetoflarum/fake-data/blob/master/LICENSE.md) [![Latest Stable Version](https://img.shields.io/packagist/v/migratetoflarum/fake-data.svg)](https://packagist.org/packages/migratetoflarum/fake-data) [![Total Downloads](https://img.shields.io/packagist/dt/migratetoflarum/fake-data.svg)](https://packagist.org/packages/migratetoflarum/fake-data) [![Donate](https://img.shields.io/badge/paypal-donate-yellow.svg)](https://www.paypal.me/clarkwinkelmann)
 
-This extension allows you to generate fake data for testing your forum.
+This extension allows you to generate fake data to test your forum.
 
-You choose number of new users, discussions and posts.
+You choose the number of new users, discussions and posts.
 
 If you do not create new users, random existing users will be picked as authors for new discussions and posts.
+Alternatively, a list of user-provided user IDs can be used (REST API and command line only).
 
 If you do not create new discussions, random existing discussions will be picked for new posts.
+Alternatively, a list of user-provided discussion IDs can be used (REST API and command line only).
 
 A new button is added on discussions if you want to generate replies to that discussion only.
 
-The date seed is made of two options: start date will be parsed by `Carbon::parse`, so it accepts dates in many formats (example `2021-01-01 15:00:00`) as well as human time (example `2 days ago`).
+The date seed is made of two options: start date will be parsed by `Carbon::parse()`, so it accepts dates in many formats (example `2021-01-01 15:00:00`) as well as human time (example `2 days ago`).
 Date interval is in seconds.
+Every time the seed needs a date, the interval will be used to make it unique (user join date, discussion creation time, reply time, ...)
+If you generate many records at once with the default date settings, part of the content will end up a few minutes or hours in the future.
 
-The script can be called via the API at `/api/fake-data` with parameters `user_count`, `discussion_count`, `posts_count`, `date_start` and `date_interval`.
-If you pass zero for users or discussions, you can provide `user_ids` and/or `discussion_ids` to restrict which users/discussions can be picked.
-`tag_ids` can be used to specify an array of tags to apply to all created discussions.
+The extension can be used via 3 different methods:
 
-**It's probably best to not install this on your production forum!**
+- Via the Flarum frontend, in the admin panel (global seed) or in the discussion action dropdown (discussion seed).
+- Via the command line. Run `php flarum help migratetoflarum:fake-data` to view the list of options.
+- Via the REST API. Perform a `POST` request to `/api/fake-data`. The body can be JSON or any format recognized by Flarum. The parameters have the same name as the command line, for example `user_count`.
+
+**Even though the feature is restricted to admin accounts, It's probably best to not install this on a production forum!**
+
+There is no way to mass delete the generated data.
 
 ## Installation
 
