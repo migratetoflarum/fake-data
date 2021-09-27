@@ -93,6 +93,7 @@ class Seeder
         $discussionIds = [];
         $discussionIdsToRefresh = [];
         $userIdsToRefresh = [];
+        $tagIdsToRefresh = [];
 
         $output->info("Seeding {$config->discussionCount} discussions");
         $output->progressStart($config->discussionCount);
@@ -130,6 +131,12 @@ class Seeder
 
             if (count($tagIds)) {
                 $discussion->tags()->attach($tagIds);
+
+                foreach ($tagIds as $tagId) {
+                    if (!in_array($tagId, $tagIdsToRefresh)) {
+                        $tagIdsToRefresh[] = $tagId;
+                    }
+                }
             }
 
             $discussionIds[] = $discussion->id;
@@ -214,6 +221,22 @@ class Seeder
                 $discussion->refreshCommentCount();
                 $discussion->refreshParticipantCount();
                 $discussion->save();
+
+                $output->progressAdvance();
+            });
+
+            $output->progressFinish();
+        }
+
+        if (count($tagIdsToRefresh)) {
+            $output->info('Updating meta of ' . count($tagIdsToRefresh) . ' tags');
+            $output->progressStart(count($tagIdsToRefresh));
+
+            Tag::query()->whereIn('id', $tagIdsToRefresh)->each(function (Tag $tag) use ($output) {
+                // There is no built-in method to refresh the discussion count because it's all based on events and deltas
+                $tag->discussion_count = $tag->discussions()->where('is_private', false)->whereNull('hidden_at')->count();
+                $tag->refreshLastPostedDiscussion();
+                $tag->save();
 
                 $output->progressAdvance();
             });
