@@ -31,7 +31,7 @@ There is no way to mass delete the generated data.
 
 ## Installation
 
-    composer require migratetoflarum/fake-data:*
+    composer require migratetoflarum/fake-data:"*"
 
 ## A MigrateToFlarum extension
 
