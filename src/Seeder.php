@@ -2,7 +2,9 @@
 
 namespace MigrateToFlarum\FakeData;
 
+use Carbon\Carbon;
 use Faker\Factory;
+use Flarum\Database\AbstractModel;
 use Flarum\Discussion\Discussion;
 use Flarum\Foundation\ValidationException;
 use Flarum\Locale\Translator;
@@ -10,6 +12,8 @@ use Flarum\Post\CommentPost;
 use Flarum\Tags\Tag;
 use Flarum\User\User;
 use Illuminate\Console\OutputStyle;
+use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Arr;
 use MigrateToFlarum\FakeData\Faker\FlarumInternetProvider;
 use MigrateToFlarum\FakeData\Faker\FlarumUniqueProvider;
 use MigrateToFlarum\FakeData\Validators\FakeDataParametersValidator;
@@ -18,14 +22,49 @@ class Seeder
 {
     protected $validator;
     protected $translator;
+    protected $db;
 
-    public function __construct(FakeDataParametersValidator $validator, Translator $translator)
+    public function __construct(FakeDataParametersValidator $validator, Translator $translator, ConnectionInterface $db)
     {
         $this->validator = $validator;
         $this->translator = $translator;
+        $this->db = $db;
     }
 
     public function seed(SeedConfiguration $config, OutputStyle $output)
+    {
+        $startTime = Carbon::now();
+
+        // Unguard so we can fill in IDs in model constructors
+        AbstractModel::unguard();
+
+        if ($config->transaction) {
+            $output->info('Starting database transaction');
+            $this->db->beginTransaction();
+
+            try {
+                $this->wrappedTransaction($config, $output);
+            } catch (\Exception $exception) {
+                $output->error('An exception was thrown, rolling back database changes');
+
+                $this->db->rollBack();
+
+                throw $exception;
+            }
+
+            $this->db->commit();
+            $output->info('Database changes committed');
+        } else {
+            $output->info('Seeding without transaction');
+            $this->wrappedTransaction($config, $output);
+        }
+
+        AbstractModel::reguard();
+
+        $this->logTimeElapsed($output, $startTime, 'Total time ');
+    }
+
+    protected function wrappedTransaction(SeedConfiguration $config, OutputStyle $output)
     {
         $this->validator->assertValid([
             'user_count' => $config->userCount,
@@ -39,11 +78,13 @@ class Seeder
         $faker->addProvider(new FlarumInternetProvider($faker));
         $faker->addProvider(new FlarumUniqueProvider($faker));
 
-        $newUserIds = [];
         $bulkUserIncrement = 1;
+        $userStartTime = Carbon::now();
 
         $output->info("Seeding {$config->userCount} users");
         $output->progressStart($config->userCount);
+
+        $lastUserIdBeforeImport = $this->largestId('users');
 
         for ($i = 0; $i < $config->userCount; $i++) {
             $user = new User();
@@ -57,29 +98,35 @@ class Seeder
                 }) . $bulkUserIncrement : $faker->flarumUnique()->userName;
             $user->is_email_confirmed = true;
             $user->joined_at = $config->nextDate();
-            $user->save();
+            $this->batchSave($user);
 
-            $newUserIds[] = $user->id;
             $bulkUserIncrement++;
 
             $output->progressAdvance();
         }
 
+        $this->batchSave();
         $output->progressFinish();
+        $this->logTimeElapsed($output, $userStartTime);
+
+        $userIdsForNewContent = [];
 
         // Put logic in an IF so that we only do the count() check if necessary
         if ($config->discussionCount > 0 || $config->postCount > 0) {
-            $userQuery = User::query()->inRandomOrder();
-
-            if ($config->userCount > 0) {
-                $userQuery->whereIn('id', $newUserIds);
-            }
-
             if (is_array($config->providedUserIds)) {
-                $userQuery->whereIn('id', $config->providedUserIds);
+                $userIdsForNewContent = $config->providedUserIds;
+            } else if ($config->userCount > 0) {
+                $userIdsForNewContent = User::query()
+                    ->where('id', '>', $lastUserIdBeforeImport)
+                    ->pluck('id');
+            } else {
+                $userIdsForNewContent = User::query()
+                    ->inRandomOrder()
+                    ->limit(10000)
+                    ->pluck('id');
             }
 
-            $count = $userQuery->count();
+            $count = count($userIdsForNewContent);
 
             if ($count === 0) {
                 throw new ValidationException([
@@ -94,14 +141,18 @@ class Seeder
         $discussionIdsToRefresh = [];
         $userIdsToRefresh = [];
         $tagIdsToRefresh = [];
+        $discussionStartTime = Carbon::now();
 
         $output->info("Seeding {$config->discussionCount} discussions");
         $output->progressStart($config->discussionCount);
 
         for ($i = 0; $i < $config->discussionCount; $i++) {
-            $author = $config->reuseInBulkMode('discussion-author', function () use ($userQuery) {
-                return $userQuery->first();
-            });
+            // Wrap user into model because it's needed for Discussion::start() but all we really need is the ID
+            $author = new User([
+                'id' => $config->reuseInBulkMode('discussion-author', function () use ($faker, $userIdsForNewContent) {
+                    return (int)$faker->randomElement($userIdsForNewContent);
+                }),
+            ]);
             $title = $config->reuseInBulkMode('discussion-title', function () use ($faker) {
                 return $faker->sentence($faker->numberBetween(1, 6));
             });
@@ -157,20 +208,27 @@ class Seeder
         }
 
         $output->progressFinish();
+        $this->logTimeElapsed($output, $discussionStartTime);
+
+        $updatedDiscussionNumberIndex = [];
 
         // Put logic in an IF so that we only do the count() check if necessary
         if ($config->postCount > 0) {
-            $discussionQuery = Discussion::query()->inRandomOrder();
-
-            if ($config->discussionCount > 0) {
-                $discussionQuery->whereIn('id', $newDiscussionIds);
-            }
-
             if (is_array($config->providedDiscussionIds)) {
-                $discussionQuery->whereIn('id', $config->providedDiscussionIds);
+                $discussionIdsForNewPosts = $config->providedDiscussionIds;
+            } else if (count($newDiscussionIds)) {
+                $discussionIdsForNewPosts = $newDiscussionIds;
+            } else {
+                // Use a limit to reduce the risk of hitting memory limits with a huge array
+                // Use random order so that if we do hit the limit, we can still get any discussion
+                $discussionIdsForNewPosts = Discussion::query()
+                    ->where('is_private', false)
+                    ->inRandomOrder()
+                    ->limit(10000)
+                    ->pluck('id');
             }
 
-            $count = $discussionQuery->count();
+            $count = count($discussionIdsForNewPosts);
 
             if ($count === 0) {
                 throw new ValidationException([
@@ -180,47 +238,66 @@ class Seeder
 
             $output->info("Will use $count discussions for post seed");
 
+            $postStartTime = Carbon::now();
+
             $output->info("Seeding {$config->postCount} posts");
             $output->progressStart($config->postCount);
 
             for ($i = 0; $i < $config->postCount; $i++) {
-                $author = $config->reuseInBulkMode('post-author', function () use ($userQuery) {
-                    return $userQuery->first();
+                $authorId = $config->reuseInBulkMode('post-author', function () use ($faker, $userIdsForNewContent) {
+                    return (int)$faker->randomElement($userIdsForNewContent);
                 });
-                $discussion = $discussionQuery->first();
+                // Don't place this in reuseInBulkMode() wrapper or all new posts would go into a single discussion
+                $discussionId = (int)$faker->randomElement($discussionIdsForNewPosts);
 
                 // Add the randomly selected discussions to the list of discussions in need of a meta update
                 // We skip the check if new discussions were created above, because we are certain those are already in the array
-                if ($config->discussionCount === 0 && !in_array($discussion->id, $discussionIdsToRefresh)) {
-                    $discussionIdsToRefresh[] = $discussion->id;
+                if ($config->discussionCount === 0 && !in_array($discussionId, $discussionIdsToRefresh)) {
+                    $discussionIdsToRefresh[] = $discussionId;
                 }
 
-                if (!in_array($author->id, $userIdsToRefresh)) {
-                    $userIdsToRefresh[] = $author->id;
+                if (!in_array($authorId, $userIdsToRefresh)) {
+                    $userIdsToRefresh[] = $authorId;
                 }
 
                 $content = $config->reuseInBulkMode('discussion-content', function () use ($faker) {
                     return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
                 });
-                $post = CommentPost::reply($discussion->id, $content, $author->id, null);
+                $post = CommentPost::reply($discussionId, $content, $authorId, null);
                 $post->created_at = $config->nextDate();
-                $post->save();
+
+                // Re-create logic from Post::boot()
+                // We can actually skip setting the ->type because CommentPost::reply already does it even though it doesn't need to
+                $post->number = (Arr::exists($updatedDiscussionNumberIndex, $discussionId) ? $updatedDiscussionNumberIndex[$discussionId] : $post->discussion->post_number_index) + 1;
+                $updatedDiscussionNumberIndex[$discussionId] = $post->number;
+                // Do not save the updated post_number_index here. We'll do it in the discussion meta below
+                // We know this discussion is already scheduled for a meta update anyway
+
+                $this->batchSave($post);
 
                 $output->progressAdvance();
             }
 
+            $this->batchSave();
             $output->progressFinish();
+            $this->logTimeElapsed($output, $postStartTime);
         }
 
         if (count($discussionIdsToRefresh)) {
+            $discussionMetaStartTime = Carbon::now();
+
             $output->info('Updating meta of ' . count($discussionIdsToRefresh) . ' discussions');
             $output->progressStart(count($discussionIdsToRefresh));
 
-            Discussion::query()->whereIn('id', $discussionIdsToRefresh)->each(function (Discussion $discussion) use ($newDiscussionIds, $output) {
+            Discussion::query()->whereIn('id', $discussionIdsToRefresh)->each(function (Discussion $discussion) use ($newDiscussionIds, $output, $updatedDiscussionNumberIndex) {
                 // Not all discussions need their first post refreshed
                 // This IF will save some precious time when seeding large number of replies only
                 if (in_array($discussion->id, $newDiscussionIds)) {
                     $discussion->setFirstPost($discussion->comments()->oldest()->first());
+                }
+
+                if ($numberIndex = Arr::get($updatedDiscussionNumberIndex, $discussion->id)) {
+                    $discussion->post_number_index = $numberIndex;
                 }
 
                 $discussion->refreshLastPost();
@@ -232,9 +309,12 @@ class Seeder
             });
 
             $output->progressFinish();
+            $this->logTimeElapsed($output, $discussionMetaStartTime);
         }
 
         if (count($tagIdsToRefresh)) {
+            $tagMetaStartTime = Carbon::now();
+
             $output->info('Updating meta of ' . count($tagIdsToRefresh) . ' tags');
             $output->progressStart(count($tagIdsToRefresh));
 
@@ -248,9 +328,12 @@ class Seeder
             });
 
             $output->progressFinish();
+            $this->logTimeElapsed($output, $tagMetaStartTime);
         }
 
         if (count($userIdsToRefresh)) {
+            $userMetaStartTime = Carbon::now();
+
             $output->info('Updating meta of ' . count($userIdsToRefresh) . ' users');
             $output->progressStart(count($userIdsToRefresh));
 
@@ -263,6 +346,76 @@ class Seeder
             });
 
             $output->progressFinish();
+            $this->logTimeElapsed($output, $userMetaStartTime);
+        }
+    }
+
+    protected $batchTable = null;
+    protected $batchInsert = [];
+
+    /**
+     * To be called in place of AbstractModel::save()
+     * @param AbstractModel|null $model Call with no parameter to save remaining queued items
+     */
+    protected function batchSave(AbstractModel $model = null)
+    {
+        if (!$model) {
+            if (count($this->batchInsert)) {
+                $this->batchDoInsert();
+            }
+            $this->batchTable = null;
+
+            return;
+        }
+
+        $table = $model->getTable();
+
+        if ($this->batchTable && $this->batchTable !== $table) {
+            throw new \Exception("Switched from table {$this->batchTable} to $table without persisting");
+        }
+
+        if ($model->exists) {
+            throw new \Exception('Batch save not supported for update');
+        }
+
+        $this->batchTable = $table;
+        $this->batchInsert[] = $model->getAttributes();
+
+        if (count($this->batchInsert) >= 100) {
+            $this->batchDoInsert();
+        }
+    }
+
+    /**
+     * Used by batchSave() to reduce duplicate logic
+     */
+    protected function batchDoInsert()
+    {
+        $this->db->table($this->batchTable)->insert($this->batchInsert);
+        $this->batchInsert = [];
+    }
+
+    /**
+     * Retrieves the latest ID value of a given table
+     * This will be used to "guess" all the new IDs during mass insertion
+     * This will not work if IDs are not continuously incrementing but this shouldn't happen with regular MySQL setups
+     * Users who run into this issue can manually provide IDs to work around it
+     * @param string $table
+     * @return int
+     */
+    protected function largestId(string $table): int
+    {
+        return (int)$this->db->table($table)->max('id');
+    }
+
+    protected function logTimeElapsed(OutputStyle $output, Carbon $start, string $prefix = 'Completed in '): void
+    {
+        $milliseconds = $start->diffInMilliseconds();
+
+        if ($milliseconds >= 10000) {
+            $output->info($prefix . round($milliseconds / 1000) . 's');
+        } else {
+            $output->info($prefix . $milliseconds . 'ms');
         }
     }
 }
