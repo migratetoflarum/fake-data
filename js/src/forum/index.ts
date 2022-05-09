@@ -6,7 +6,12 @@ import DiscussionControls from 'flarum/forum/utils/DiscussionControls';
 import GenerateRepliesModal from './components/GenerateRepliesModal';
 
 app.initializers.add('migratetoflarum-fake-data', function () {
-    extend(DiscussionControls, 'moderationControls', function (items: ItemList, discussion: any) {
+    extend(DiscussionControls, 'moderationControls', function (items: ItemList<any>, discussion: any) {
+        // Don't show the button to non-admins
+        if (!app.forum.attribute('adminUrl')) {
+            return;
+        }
+
         items.add('migratetoflarum-fake-data', Button.component({
             icon: 'fas fa-database',
             onclick() {

@@ -3,14 +3,14 @@
 namespace MigrateToFlarum\FakeData\Controllers;
 
 use Illuminate\Console\OutputStyle;
-use Laminas\Diactoros\Response\EmptyResponse;
+use Laminas\Diactoros\Response\JsonResponse;
 use MigrateToFlarum\FakeData\SeedConfiguration;
 use MigrateToFlarum\FakeData\Seeder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Symfony\Component\Console\Input\StringInput;
-use Symfony\Component\Console\Output\NullOutput;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 class FakeDataController implements RequestHandlerInterface
 {
@@ -25,8 +25,13 @@ class FakeDataController implements RequestHandlerInterface
     {
         $request->getAttribute('actor')->assertAdmin();
 
-        $this->seeder->seed(new SeedConfiguration($request->getParsedBody()), new OutputStyle(new StringInput(''), new NullOutput()));
+        $output = new BufferedOutput();
 
-        return new EmptyResponse(204);
+        $this->seeder->seed(new SeedConfiguration($request->getParsedBody()), new OutputStyle(new StringInput(''), $output));
+
+        // A TextResponse could be used but using JSON we prevent future breaking changes if we ever add more attributes to the response
+        return new JsonResponse([
+            'output' => $output->fetch(),
+        ]);
     }
 }
