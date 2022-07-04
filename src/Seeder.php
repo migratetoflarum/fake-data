@@ -13,6 +13,7 @@ use Flarum\Tags\Tag;
 use Flarum\User\User;
 use Illuminate\Console\OutputStyle;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use MigrateToFlarum\FakeData\Faker\FlarumInternetProvider;
 use MigrateToFlarum\FakeData\Faker\FlarumUniqueProvider;
@@ -289,7 +290,7 @@ class Seeder
             $output->info('Updating meta of ' . count($discussionIdsToRefresh) . ' discussions');
             $output->progressStart(count($discussionIdsToRefresh));
 
-            Discussion::query()->whereIn('id', $discussionIdsToRefresh)->each(function (Discussion $discussion) use ($newDiscussionIds, $output, $updatedDiscussionNumberIndex) {
+            $this->safeWhereIdInEach(Discussion::query(), $discussionIdsToRefresh, function (Discussion $discussion) use ($newDiscussionIds, $output, $updatedDiscussionNumberIndex) {
                 // Not all discussions need their first post refreshed
                 // This IF will save some precious time when seeding large number of replies only
                 if (in_array($discussion->id, $newDiscussionIds)) {
@@ -318,7 +319,7 @@ class Seeder
             $output->info('Updating meta of ' . count($tagIdsToRefresh) . ' tags');
             $output->progressStart(count($tagIdsToRefresh));
 
-            Tag::query()->whereIn('id', $tagIdsToRefresh)->each(function (Tag $tag) use ($output) {
+            $this->safeWhereIdInEach(Tag::query(), $tagIdsToRefresh, function (Tag $tag) use ($output) {
                 // There is no built-in method to refresh the discussion count because it's all based on events and deltas
                 $tag->discussion_count = $tag->discussions()->where('is_private', false)->whereNull('hidden_at')->count();
                 $tag->refreshLastPostedDiscussion();
@@ -337,7 +338,7 @@ class Seeder
             $output->info('Updating meta of ' . count($userIdsToRefresh) . ' users');
             $output->progressStart(count($userIdsToRefresh));
 
-            User::query()->whereIn('id', $userIdsToRefresh)->each(function (User $user) use ($output) {
+            $this->safeWhereIdInEach(User::query(), $userIdsToRefresh, function (User $user) use ($output) {
                 $user->refreshDiscussionCount();
                 $user->refreshCommentCount();
                 $user->save();
@@ -416,6 +417,21 @@ class Seeder
             $output->info($prefix . round($milliseconds / 1000) . 's');
         } else {
             $output->info($prefix . $milliseconds . 'ms');
+        }
+    }
+
+    /**
+     * Performs a Builder::whereIn()->each() call where only a subset of IDs is used in each query
+     * This prevents hitting "Prepared statement contains too many placeholders" PDO error
+     * @param Builder $query
+     * @param array $whereInIds
+     * @param callable $callback
+     * @param int $count
+     */
+    protected function safeWhereIdInEach(Builder $query, array $whereInIds, callable $callback, int $count = 1000)
+    {
+        foreach (array_chunk($whereInIds, $count) as $subsetOfIds) {
+            $query->clone()->whereIn('id', $subsetOfIds)->each($callback, $count);
         }
     }
 }
