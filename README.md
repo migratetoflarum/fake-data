@@ -1,6 +1,6 @@
 # Fake Data by MigrateToFlarum
 
-[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/migratetoflarum/fake-data/blob/master/LICENSE.md) [![Latest Stable Version](https://img.shields.io/packagist/v/migratetoflarum/fake-data.svg)](https://packagist.org/packages/migratetoflarum/fake-data) [![Total Downloads](https://img.shields.io/packagist/dt/migratetoflarum/fake-data.svg)](https://packagist.org/packages/migratetoflarum/fake-data) [![Donate](https://img.shields.io/badge/paypal-donate-yellow.svg)](https://www.paypal.me/clarkwinkelmann)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/migratetoflarum/fake-data/blob/master/LICENSE.txt) [![Latest Stable Version](https://img.shields.io/packagist/v/migratetoflarum/fake-data.svg)](https://packagist.org/packages/migratetoflarum/fake-data) [![Total Downloads](https://img.shields.io/packagist/dt/migratetoflarum/fake-data.svg)](https://packagist.org/packages/migratetoflarum/fake-data) [![Donate](https://img.shields.io/badge/paypal-donate-yellow.svg)](https://www.paypal.me/clarkwinkelmann)
 
 This extension allows you to generate fake data to test your forum.
 
@@ -31,7 +31,7 @@ There is no way to mass delete the generated data.
 
 ## Installation
 
-    composer require migratetoflarum/fake-data:*
+    composer require migratetoflarum/fake-data
 
 ## A MigrateToFlarum extension
 
