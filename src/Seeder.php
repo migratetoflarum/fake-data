@@ -147,6 +147,8 @@ class Seeder
         $output->info("Seeding {$config->discussionCount} discussions");
         $output->progressStart($config->discussionCount);
 
+        $cachedLastPostNumber = [];
+
         for ($i = 0; $i < $config->discussionCount; $i++) {
             // Wrap user into model because it's needed for Discussion::start() but all we really need is the ID
             $author = new User([
@@ -205,13 +207,14 @@ class Seeder
             $post->created_at = $discussion->created_at;
             $post->save();
 
+            // Optimization for below so we don't require an additional query per discussion to get the initial number value
+            $cachedLastPostNumber[$discussion->id] = 1;
+
             $output->progressAdvance();
         }
 
         $output->progressFinish();
         $this->logTimeElapsed($output, $discussionStartTime);
-
-        $updatedDiscussionNumberIndex = [];
 
         // Put logic in an IF so that we only do the count() check if necessary
         if ($config->postCount > 0) {
@@ -269,10 +272,21 @@ class Seeder
 
                 // Re-create logic from Post::boot()
                 // We can actually skip setting the ->type because CommentPost::reply already does it even though it doesn't need to
-                $post->number = (Arr::exists($updatedDiscussionNumberIndex, $discussionId) ? $updatedDiscussionNumberIndex[$discussionId] : $post->discussion->post_number_index) + 1;
-                $updatedDiscussionNumberIndex[$discussionId] = $post->number;
-                // Do not save the updated post_number_index here. We'll do it in the discussion meta below
-                // We know this discussion is already scheduled for a meta update anyway
+                // Since Flarum 1.3 we don't need to read/update post_number_index attribute since it's unused and deprecated
+                // We still maintain our own temporary $updatedDiscussionNumberIndex because it makes the batch save easier
+                // with the correct values already bound instead of having one sub-query for each row
+                if (Arr::exists($cachedLastPostNumber, $discussionId)) {
+                    $post->number = $cachedLastPostNumber[$discussionId] + 1;
+                } else {
+                    // Same code as Post::boot() but as an actual query instead of a wrapped expression
+                    $nextNumber = $this->db->table('posts', 'pn')
+                        ->whereRaw($this->db->getTablePrefix() . 'pn.discussion_id = ' . $discussionId)
+                        ->selectRaw('(IFNULL(MAX(' . $this->db->getTablePrefix() . 'pn.number), 0) + 1) as next_number')
+                        ->get('next_number');
+
+                    $post->number = $nextNumber->isEmpty() ? 1 : $nextNumber[0]->next_number;
+                }
+                $cachedLastPostNumber[$discussionId] = $post->number;
 
                 $this->batchSave($post);
 
@@ -290,15 +304,11 @@ class Seeder
             $output->info('Updating meta of ' . count($discussionIdsToRefresh) . ' discussions');
             $output->progressStart(count($discussionIdsToRefresh));
 
-            $this->safeWhereIdInEach(Discussion::query(), $discussionIdsToRefresh, function (Discussion $discussion) use ($newDiscussionIds, $output, $updatedDiscussionNumberIndex) {
+            $this->safeWhereIdInEach(Discussion::query(), $discussionIdsToRefresh, function (Discussion $discussion) use ($newDiscussionIds, $output) {
                 // Not all discussions need their first post refreshed
                 // This IF will save some precious time when seeding large number of replies only
                 if (in_array($discussion->id, $newDiscussionIds)) {
                     $discussion->setFirstPost($discussion->comments()->oldest()->first());
-                }
-
-                if ($numberIndex = Arr::get($updatedDiscussionNumberIndex, $discussion->id)) {
-                    $discussion->post_number_index = $numberIndex;
                 }
 
                 $discussion->refreshLastPost();
