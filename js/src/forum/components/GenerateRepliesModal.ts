@@ -1,10 +1,19 @@
 import app from 'flarum/forum/app';
-import Modal from 'flarum/common/components/Modal';
+import Modal, {IInternalModalAttrs} from 'flarum/common/components/Modal';
+import Discussion from 'flarum/common/models/Discussion';
 import GeneratorForm from '../../common/components/GeneratorForm';
 
 const translationPrefix = 'migratetoflarum-fake-data.forum.generator.';
 
-export default class GenerateRepliesModal extends Modal {
+interface GenerateRepliesModalAttrs extends IInternalModalAttrs {
+    discussion: Discussion
+}
+
+export default class GenerateRepliesModal extends Modal<GenerateRepliesModalAttrs> {
+    className() {
+        return 'GenerateRepliesModal';
+    }
+
     title() {
         return app.translator.trans(translationPrefix + 'title');
     }

@@ -1,5 +1,5 @@
 import app from 'flarum/common/app';
-import Component from 'flarum/common/Component';
+import Component, {ComponentAttrs} from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
 import Switch from 'flarum/common/components/Switch';
 import Discussion from 'flarum/common/models/Discussion';
@@ -7,7 +7,7 @@ import icon from 'flarum/common/helpers/icon';
 
 const translationPrefix = 'migratetoflarum-fake-data.lib.generator.';
 
-interface GeneratorFormAttrs {
+interface GeneratorFormAttrs extends ComponentAttrs {
     discussion?: Discussion
 }
 
