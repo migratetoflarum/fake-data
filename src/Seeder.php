@@ -21,18 +21,15 @@ use MigrateToFlarum\FakeData\Validators\FakeDataParametersValidator;
 
 class Seeder
 {
-    protected $validator;
-    protected $translator;
-    protected $db;
-
-    public function __construct(FakeDataParametersValidator $validator, Translator $translator, ConnectionInterface $db)
+    public function __construct(
+        protected FakeDataParametersValidator $validator,
+        protected Translator                  $translator,
+        protected ConnectionInterface         $db,
+    )
     {
-        $this->validator = $validator;
-        $this->translator = $translator;
-        $this->db = $db;
     }
 
-    public function seed(SeedConfiguration $config, OutputStyle $output)
+    public function seed(SeedConfiguration $config, OutputStyle $output): void
     {
         $startTime = Carbon::now();
 
@@ -65,7 +62,7 @@ class Seeder
         $this->logTimeElapsed($output, $startTime, 'Total time ');
     }
 
-    protected function wrappedTransaction(SeedConfiguration $config, OutputStyle $output)
+    protected function wrappedTransaction(SeedConfiguration $config, OutputStyle $output): void
     {
         $this->validator->assertValid([
             'user_count' => $config->userCount,
@@ -203,7 +200,10 @@ class Seeder
             $content = $config->reuseInBulkMode('discussion-content', function () use ($faker) {
                 return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
             });
-            $post = CommentPost::reply($discussion->id, $content, $author->id, null);
+            $post = new CommentPost();
+            $post->discussion_id = $discussion->id;
+            $post->user_id = $author->id;
+            $post->setContentAttribute($content, $author);
             $post->created_at = $discussion->created_at;
             $post->save();
 
@@ -267,7 +267,13 @@ class Seeder
                 $content = $config->reuseInBulkMode('discussion-content', function () use ($faker) {
                     return implode("\n\n", $faker->paragraphs($faker->numberBetween(1, 10)));
                 });
-                $post = CommentPost::reply($discussionId, $content, $authorId, null);
+                $post = new CommentPost();
+                // Must be set manually because we will batch insert
+                $post->type = 'comment';
+                $post->discussion_id = $discussionId;
+                $post->content = $content;
+                // It's probably best to set the user_id after content, because otherwise HasFormattedContent::setContentAttribute would try to load the user relationship
+                $post->user_id = $authorId;
                 $post->created_at = $config->nextDate();
 
                 // Re-create logic from Post::boot()
@@ -361,14 +367,14 @@ class Seeder
         }
     }
 
-    protected $batchTable = null;
-    protected $batchInsert = [];
+    protected ?string $batchTable = null;
+    protected array $batchInsert = [];
 
     /**
      * To be called in place of AbstractModel::save()
      * @param AbstractModel|null $model Call with no parameter to save remaining queued items
      */
-    protected function batchSave(AbstractModel $model = null)
+    protected function batchSave(AbstractModel $model = null): void
     {
         if (!$model) {
             if (count($this->batchInsert)) {
@@ -400,7 +406,7 @@ class Seeder
     /**
      * Used by batchSave() to reduce duplicate logic
      */
-    protected function batchDoInsert()
+    protected function batchDoInsert(): void
     {
         $this->db->table($this->batchTable)->insert($this->batchInsert);
         $this->batchInsert = [];
@@ -438,7 +444,7 @@ class Seeder
      * @param callable $callback
      * @param int $count
      */
-    protected function safeWhereIdInEach(Builder $query, array $whereInIds, callable $callback, int $count = 1000)
+    protected function safeWhereIdInEach(Builder $query, array $whereInIds, callable $callback, int $count = 1000): void
     {
         foreach (array_chunk($whereInIds, $count) as $subsetOfIds) {
             $query->clone()->whereIn('id', $subsetOfIds)->each($callback, $count);

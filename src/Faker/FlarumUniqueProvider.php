@@ -6,9 +6,9 @@ use Faker\Provider\Base;
 
 class FlarumUniqueProvider extends Base
 {
-    protected $flarumUnique;
+    protected ?DatabaseUniqueGenerator $flarumUnique = null;
 
-    public function flarumUnique()
+    public function flarumUnique(): DatabaseUniqueGenerator
     {
         if (!$this->flarumUnique) {
             $this->flarumUnique = new DatabaseUniqueGenerator($this->generator);

@@ -26,16 +26,14 @@ class FakeCommand extends Command
 
     protected $description = 'Generate fake discussion test data';
 
-    protected $seeder;
-
-    public function __construct(Seeder $seeder)
+    public function __construct(
+        protected Seeder $seeder,
+    )
     {
-        $this->seeder = $seeder;
-
         parent::__construct();
     }
 
-    public function handle()
+    public function handle(): void
     {
         try {
             $rawOptions = $this->options();

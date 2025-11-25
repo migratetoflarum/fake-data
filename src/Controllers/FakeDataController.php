@@ -2,6 +2,7 @@
 
 namespace MigrateToFlarum\FakeData\Controllers;
 
+use Flarum\Http\RequestUtil;
 use Illuminate\Console\OutputStyle;
 use Laminas\Diactoros\Response\JsonResponse;
 use MigrateToFlarum\FakeData\SeedConfiguration;
@@ -14,16 +15,15 @@ use Symfony\Component\Console\Output\BufferedOutput;
 
 class FakeDataController implements RequestHandlerInterface
 {
-    protected $seeder;
-
-    public function __construct(Seeder $seeder)
+    public function __construct(
+        protected Seeder $seeder,
+    )
     {
-        $this->seeder = $seeder;
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $request->getAttribute('actor')->assertAdmin();
+        RequestUtil::getActor($request)->assertAdmin();
 
         $output = new BufferedOutput();
 

@@ -1,8 +1,7 @@
-import app from 'flarum/admin/app';
+import Extend from 'flarum/common/extenders';
 import FakeDataPage from './components/FakeDataPage';
 
-app.initializers.add('migratetoflarum-fake-data', function () {
-    app.extensionData
-        .for('migratetoflarum-fake-data')
-        .registerPage(FakeDataPage);
-});
+export const extend = [
+    new Extend.Admin()
+        .page(FakeDataPage),
+];

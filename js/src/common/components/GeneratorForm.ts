@@ -1,9 +1,10 @@
 import app from 'flarum/common/app';
 import Component, {ComponentAttrs} from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
+import Icon from 'flarum/common/components/Icon';
 import Switch from 'flarum/common/components/Switch';
 import Discussion from 'flarum/common/models/Discussion';
-import icon from 'flarum/common/helpers/icon';
+import sortTags from 'ext:flarum/tags/common/utils/sortTags'
 
 const translationPrefix = 'migratetoflarum-fake-data.lib.generator.';
 
@@ -26,7 +27,7 @@ export default class GeneratorForm extends Component<GeneratorFormAttrs> {
     view() {
         const disabled = this.loading || this.output;
 
-        return [
+        return m('.Form', m('.Form-body', [
             m('.Form-group', [
                 Switch.component({
                     state: this.bulk,
@@ -80,7 +81,7 @@ export default class GeneratorForm extends Component<GeneratorFormAttrs> {
                             m('option', {
                                 value: 'random',
                             }, app.translator.trans(translationPrefix + 'discussion-tags-random')),
-                            flarum.core.compat['tags/utils/sortTags'](app.store.all('tags')).map((tag: any) => {
+                            sortTags(app.store.all('tags')).map((tag: any) => {
                                 let label = tag.name();
                                 const ids = [tag.id()];
 
@@ -98,7 +99,10 @@ export default class GeneratorForm extends Component<GeneratorFormAttrs> {
                                 }, label);
                             }),
                         ]),
-                        icon('fas fa-sort', {className: 'Select-caret'}),
+                        m(Icon, {
+                            name: 'fas fa-sort',
+                            className: 'Select-caret',
+                        }),
                     ]),
                 ]) : null,
             ],
@@ -115,28 +119,30 @@ export default class GeneratorForm extends Component<GeneratorFormAttrs> {
                     disabled,
                 }),
             ]),
-            m('.Form-group.FakeData-Date', [
+            m('.Form-group', [
                 m('label', app.translator.trans(translationPrefix + 'date')),
-                m('input.FormControl', {
-                    type: 'text',
-                    value: this.dateStart + '',
-                    oninput: (event: Event) => {
-                        this.dateStart = (event.target as HTMLInputElement).value;
-                        this.dirty = true;
-                    },
-                    disabled,
-                    placeholder: app.translator.trans(translationPrefix + 'date-start-placeholder'),
-                }),
-                m('input.FormControl', {
-                    type: 'text',
-                    value: this.dateInterval + '',
-                    oninput: (event: Event) => {
-                        this.dateInterval = (event.target as HTMLInputElement).value;
-                        this.dirty = true;
-                    },
-                    disabled,
-                    placeholder: app.translator.trans(translationPrefix + 'date-interval-placeholder'),
-                }),
+                m('.FakeData-Date', [
+                    m('input.FormControl', {
+                        type: 'text',
+                        value: this.dateStart + '',
+                        oninput: (event: Event) => {
+                            this.dateStart = (event.target as HTMLInputElement).value;
+                            this.dirty = true;
+                        },
+                        disabled,
+                        placeholder: app.translator.trans(translationPrefix + 'date-start-placeholder'),
+                    }),
+                    m('input.FormControl', {
+                        type: 'text',
+                        value: this.dateInterval + '',
+                        oninput: (event: Event) => {
+                            this.dateInterval = (event.target as HTMLInputElement).value;
+                            this.dirty = true;
+                        },
+                        disabled,
+                        placeholder: app.translator.trans(translationPrefix + 'date-interval-placeholder'),
+                    }),
+                ]),
             ]),
             m('.Form-group', [
                 this.output === null ? Button.component({
@@ -207,6 +213,6 @@ export default class GeneratorForm extends Component<GeneratorFormAttrs> {
                     m('pre', this.output),
                 ],
             ]),
-        ];
+        ]));
     }
 }

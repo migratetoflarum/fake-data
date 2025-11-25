@@ -7,20 +7,17 @@ use Illuminate\Support\Arr;
 
 class SeedConfiguration
 {
-    public $transaction;
-    public $bulkMode;
-    protected $bulkModeCache = [];
-    protected $dateInterval;
-    /**
-     * @var $date Carbon
-     */
-    protected $date;
-    public $userCount;
+    public bool $transaction;
+    public bool $bulkMode;
+    protected array $bulkModeCache = [];
+    protected int $dateInterval;
+    protected Carbon $date;
+    public int $userCount;
     public $providedUserIds;
-    public $discussionCount;
+    public int $discussionCount;
     public $providedTagIds;
     public $providedDiscussionIds;
-    public $postCount;
+    public int $postCount;
 
     public function __construct(array $attributes)
     {

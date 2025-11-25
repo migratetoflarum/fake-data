@@ -27,9 +27,18 @@ app.initializers.add('migratetoflarum-fake-data', function () {
         addControls(items, discussion);
     });
 
-    if ('v17development/blog/components/BlogPostController' in (flarum.core as any).compat) {
-        extend(flarum.core.compat['v17development/blog/components/BlogPostController'].prototype, 'manageArticleButtons', function (items) {
-            addControls(items, this.attrs.article);
-        });
+    try {
+        // At the time of writing, the extension is not yet compatible with Flarum 2.x
+        // No idea whether this import path will be valid
+        // The try/catch block should prevent a crash if the extension exists but doesn't follow this pattern
+        const BlogPostController = flarum.reg.get('v17development-blog', 'forum/components/BlogPostController');
+
+        if (BlogPostController) {
+            extend(BlogPostController.prototype, 'manageArticleButtons', function (items) {
+                addControls(items, this.attrs.article);
+            });
+        }
+    } catch (error) {
+        console.warn('[fake-data] Could not extend v17development-blog', error);
     }
 });
